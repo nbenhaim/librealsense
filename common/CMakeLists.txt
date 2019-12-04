@@ -23,4 +23,6 @@ set(COMMON_SRC
         "${CMAKE_CURRENT_LIST_DIR}/fw-update-helper.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/on-chip-calib.h"
         "${CMAKE_CURRENT_LIST_DIR}/on-chip-calib.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/on-chip-calib-cli.h"
+        "${CMAKE_CURRENT_LIST_DIR}/on-chip-calib-cli.cpp"
 )

@@ -136,6 +136,7 @@ namespace rs2
     {
         try
         {
+            printf("start viewer w,h,fps = %d, %d, %f\n", w, h , fps);
             if (_ui) _sub->ui = *_ui; // Save previous configuration
 
             // Select only depth stream
@@ -568,6 +569,8 @@ namespace rs2
         // Capture metrics before
         auto metrics_before = get_depth_metrics(invoke);
         _metrics.push_back(metrics_before);
+
+        printf("metrics vector length %d, %f, %f\n", _metrics.size(), metrics_before.first, metrics_before.second);
        
         stop_viewer(invoke);
 
