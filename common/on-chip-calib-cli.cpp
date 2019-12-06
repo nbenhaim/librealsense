@@ -11,7 +11,8 @@
 #include <condition_variable>
 #include <model-views.h>
 #include <viewer.h>
-
+#include <ds5/ds5-private.h>
+#include <types.h>
 
 
 #include "../tools/depth-quality/depth-metrics.h"
@@ -692,7 +693,26 @@ namespace rs2
         _new_calib.resize(sizeof(table_header) + hd->table_size, 0);
         calib_file.read((char*)_new_calib.data(), _new_calib.size());
 
+        //size_t table_size = sizeof(table_header) + hd->table_size;
+        size_t table_size = sizeof(librealsense::ds::coefficients_table);
+        const librealsense::ds::coefficients_table * fromfile = librealsense::ds::check_calib<librealsense::ds::coefficients_table>(_new_calib);
+        printf("loaded baseline is: %f\n", fromfile->baseline);
+
+        librealsense::ds::coefficients_table copied_table;
+
         
+        memcpy(&copied_table, fromfile, table_size);
+        //copied_table.baseline = 55.0;
+        
+        memcpy(_new_calib.data(), &copied_table, table_size);
+
+        //copied_table.header = librealsense::calc_crc32((const uint8_t *)&copied_table.header, sizeof(copied_table.header));
+        copied_table.header.crc32 = librealsense::calc_crc32(_new_calib.data() + sizeof(table_header), _new_calib.size() - sizeof(table_header));
+
+        memcpy(_new_calib.data(), &copied_table, table_size);
+
+        printf("copied baseline is: %f\n", copied_table.baseline);
+
         
         apply_calib(true);
         keep();

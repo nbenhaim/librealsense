@@ -8,7 +8,7 @@ project(RealsenseToolsDepthQuality)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-include_directories(../../third-party/tclap/include ${CMAKE_BINARY_DIR})
+include_directories(../../third-party/tclap/include ../../src/ds5/ ${CMAKE_BINARY_DIR})
 
 include(../../common/CMakeLists.txt)
 
@@ -16,6 +16,7 @@ include(../../common/CMakeLists.txt)
 set(RS_QUALITY_TOOL_CPP
     ${COMMON_SRC}
     rs-calib-cli.cpp
+    ../../src/ds5/ds5-private.h
     ../../common/realsense-ui-advanced-mode.h
     ../../tools/depth-quality/depth-metrics.h
     ../../common/on-chip-calib-cli.h
