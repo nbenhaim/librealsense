@@ -829,10 +829,10 @@ namespace rs2
         _metrics.push_back(metrics_after);
 
         //printf("metrics vector length %d, %f, %f\n", _metrics.size(), metrics_after.first, metrics_after.second);
-        printf("rms error before: %f ... rms error after: %f\n", metrics_before.second, metrics_after.second);
+        printf("rms error before: %f ... rms error after: %f\n", fabs(metrics_before.second), fabs(metrics_after.second));
         std::string message = "rms error after calibration was smaller than before calibration (good!) - would you like to update calibration params (y/n)? (recommended)";
 
-        if (metrics_before.second < metrics_after.second)
+        if (fabs(metrics_before.second) < fabs(metrics_after.second))
         {
             message = "rms error after calibration was bigger than before calibration (NOT good!) - would you like to update calibration params (y/n)? (NOT recommended)";
         }
