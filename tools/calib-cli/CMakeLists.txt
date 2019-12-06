@@ -8,7 +8,7 @@ project(RealsenseToolsDepthQuality)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-include_directories(${CMAKE_BINARY_DIR})
+include_directories(../../third-party/tclap/include ${CMAKE_BINARY_DIR})
 
 include(../../common/CMakeLists.txt)
 

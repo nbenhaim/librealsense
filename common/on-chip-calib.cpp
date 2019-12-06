@@ -106,6 +106,8 @@ namespace rs2
     // Wait for next depth frame and return it
     rs2::depth_frame on_chip_calib_manager::fetch_depth_frame(invoker invoke)
     {
+       
+
         auto profiles = _sub->get_selected_profiles();
         bool frame_arrived = false;
         rs2::depth_frame res = rs2::frame{};
@@ -225,6 +227,13 @@ namespace rs2
 
         auto f = fetch_depth_frame(invoke);
         auto sensor = _sub->s->as<rs2::depth_stereo_sensor>();
+
+        rs2_error* e = nullptr;
+       // const rs2_device * d = _
+       // rs2_reset_to_factory_calibration(_dev.get(), &e);
+        
+        //rs2_reset_to_factory_calibration(d, &e);
+
         auto intr = f.get_profile().as<rs2::video_stream_profile>().get_intrinsics();
         rs2::region_of_interest roi { (int)(f.get_width() * 0.45f), (int)(f.get_height()  * 0.45f), 
                                       (int)(f.get_width() * 0.55f), (int)(f.get_height() * 0.55f) };

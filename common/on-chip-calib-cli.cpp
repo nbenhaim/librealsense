@@ -12,6 +12,8 @@
 #include <model-views.h>
 #include <viewer.h>
 
+
+
 #include "../tools/depth-quality/depth-metrics.h"
 
 namespace rs2
@@ -324,7 +326,7 @@ namespace rs2
             rms_std = new_rms_std;
 
             rmses.clear();
-
+            
             for (int i = 0; i < 31; i++)
             {
                 f = fetch_depth_frame(pipe);
@@ -620,6 +622,92 @@ namespace rs2
 
     }
 
+    void on_chip_calib_cli_manager::save_calib(const char * filepath)
+    {
+        start_realsense(0,0,30);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+       
+
+        std::vector<uint8_t> current_calib;
+
+        // Fetch current calibration using GETINITCAL command
+        
+        std::vector<uint8_t> fetch_calib{
+            0x14, 0, 0xAB, 0xCD, 0x15, 0, 0, 0, 0x19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+        
+        auto calib = safe_send_command(fetch_calib, "GETINITCAL");
+        if (calib.size() < sizeof(table_header) + sizeof(int32_t)) throw std::runtime_error("Missing calibration header from GETINITCAL!");
+
+        auto table = (uint8_t*)(calib.data() + sizeof(int32_t) + sizeof(table_header));
+        auto hd = (table_header*)(calib.data() + sizeof(int32_t));
+
+        if (calib.size() < sizeof(table_header) + sizeof(int32_t) + hd->table_size) 
+            throw std::runtime_error("Table truncated from GETINITCAL!");
+
+        current_calib.resize(sizeof(table_header) + hd->table_size, 0);
+        memcpy(current_calib.data(), hd, current_calib.size()); // Copy to old_calib
+
+        std::ofstream calib_file;
+
+        calib_file.open (filepath, std::ios::out | std::ios::binary);
+        calib_file.write((const char *)current_calib.data(), current_calib.size());
+
+        calib_file.close();
+
+        stop_realsense();
+    }
+
+    void on_chip_calib_cli_manager::load_calib(const char * filepath)
+    {
+        start_realsense(0,0,30);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+       
+
+        std::vector<uint8_t> current_calib;
+
+        // Fetch current calibration using GETINITCAL command
+        
+        std::vector<uint8_t> fetch_calib{
+            0x14, 0, 0xAB, 0xCD, 0x15, 0, 0, 0, 0x19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        };
+        
+        auto calib = safe_send_command(fetch_calib, "GETINITCAL");
+        if (calib.size() < sizeof(table_header) + sizeof(int32_t)) throw std::runtime_error("Missing calibration header from GETINITCAL!");
+
+        auto table = (uint8_t*)(calib.data() + sizeof(int32_t) + sizeof(table_header));
+        auto hd = (table_header*)(calib.data() + sizeof(int32_t));
+
+        if (calib.size() < sizeof(table_header) + sizeof(int32_t) + hd->table_size) 
+            throw std::runtime_error("Table truncated from GETINITCAL!");
+
+        current_calib.resize(sizeof(table_header) + hd->table_size, 0);
+        memcpy(current_calib.data(), hd, current_calib.size()); // Copy to old_calib
+
+        //now we have the current calibration data
+        //we need to load the data from file into a vector
+        std::ifstream calib_file;
+        calib_file.open(filepath, std::ios::in | std::ios::binary);
+
+        _new_calib.resize(sizeof(table_header) + hd->table_size, 0);
+        calib_file.read((char*)_new_calib.data(), _new_calib.size());
+
+        
+        
+        apply_calib(true);
+        keep();
+
+        stop_realsense();
+        printf("finished applying loaded calibration data\n");
+
+        //std::ofstream calib_file;
+
+        //calib_file.open (filepath, std::ios::out | std::ios::binary);
+        //calib_file.write((const char *)current_calib.data(), current_calib.size());
+
+        //calib_file.close();
+    }
+
     void on_chip_calib_cli_manager::process_flow()
     {
     //     //update_last_used();
@@ -670,7 +758,7 @@ namespace rs2
         auto metrics_before = get_depth_metrics(_pipe);
         _metrics.push_back(metrics_before);
 
-        printf("metrics vector length %d, %f, %f\n", _metrics.size(), metrics_before.first, metrics_before.second);
+        //printf("metrics vector length %d, %f, %f\n", _metrics.size(), metrics_before.first, metrics_before.second);
         
         //stop the device
         //stop_viewer(invoke);
@@ -734,16 +822,41 @@ namespace rs2
         // Make new calibration active
         apply_calib(true);
 
-        printf("finished apply calib (false)\n");
+       // printf("finished apply calib (false)\n");
 
         // Capture metrics after
         auto metrics_after = get_depth_metrics(_pipe);
         _metrics.push_back(metrics_after);
 
-        printf("metrics vector length %d, %f, %f\n", _metrics.size(), metrics_after.first, metrics_after.second);
+        //printf("metrics vector length %d, %f, %f\n", _metrics.size(), metrics_after.first, metrics_after.second);
+        printf("rms error before: %f ... rms error after: %f\n", metrics_before.second, metrics_after.second);
+        std::string message = "rms error after calibration was smaller than before calibration (good!) - would you like to update calibration params (y/n)? (recommended)";
 
-        //revert to old;
-        apply_calib(false);
+        if (metrics_before.second < metrics_after.second)
+        {
+            message = "rms error after calibration was bigger than before calibration (NOT good!) - would you like to update calibration params (y/n)? (NOT recommended)";
+        }
+
+        std::cout << message << "\n";
+
+        std::string answer;
+        std::cin >> answer;
+
+        if (answer == "y")
+        {
+            printf("updated calibration params\n");
+            
+            keep();
+        }
+        else
+        {
+            printf("Did NOT update calibration params\n");
+            apply_calib(false);
+        }
+        
+        
+
+        
 
     
     }

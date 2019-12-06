@@ -6,7 +6,10 @@
 #include "viewer.h"
 #include "on-chip-calib-cli.h"
 
+#include "tclap/CmdLine.h"
+#include "tclap/ValueArg.h"
 
+using namespace TCLAP;
 
 void stop_realsense(rs2::pipeline pipe)
 {
@@ -14,17 +17,14 @@ void stop_realsense(rs2::pipeline pipe)
 
 }
 
-bool init()
+rs2::device init()
 {
-    
-    
-
     rs2::context _ctx;
     
     rs2::device _dev;
     bool valid_config = false;
    
-
+    rs2::device d;
     // Adjust settings according to USB type
     bool usb3_device = true;
     
@@ -43,35 +43,96 @@ bool init()
             
             usb3_device = !(std::string::npos != usb_type.find("2."));
 
-            _dev = dev;
+            d = dev;
             
         }
     }
     else
     {
         printf("No realsense devices found!\n");
-        return valid_config;
+        return d;
     }
+
+    return d;
     
-    int requested_fps = usb3_device ? 30 : 15;
+}
+
+bool load_calib_data(rs2::device dev, const char * filepath)
+{
+    rs2::on_chip_calib_cli_manager calib = rs2::on_chip_calib_cli_manager(dev);
+
+    calib.load_calib(filepath);
 
     
-    //rs2::pipeline pipe = start_realsense(_dev, 0, 0, requested_fps);
+
+    return true;
+}
+
+bool save_calib_data(rs2::device dev, const char * filepath)
+{
+    rs2::on_chip_calib_cli_manager calib = rs2::on_chip_calib_cli_manager(dev);
+
+    calib.save_calib(filepath);
+
+    return true;
+}
+
+bool on_chip_calibrate(rs2::device dev)
+{
     
 
-    rs2::on_chip_calib_cli_manager calib = rs2::on_chip_calib_cli_manager(_dev);
+    rs2::on_chip_calib_cli_manager calib = rs2::on_chip_calib_cli_manager(dev);
 
     calib.process_flow();
     
     
-    return valid_config;
+    return true;
 }
 int main(int argc, const char * argv[]) try
 {
-    
-    bool valid_config = init();
-    
 
+    CmdLine cmd("librealsense on chip tool", ' ', RS2_API_VERSION_STR);
+
+    SwitchArg calibrate_arg("c", "calibrate", "runs on-chip calibration");
+  
+    ValueArg<std::string> save_arg("s", "save", "saves calibration params to a file specified here", false, "", "string");
+    ValueArg<std::string> load_arg("l", "load", "loads calibration params from a file", false, "", "string");
+
+
+    cmd.add(calibrate_arg);
+    cmd.add(save_arg);
+    cmd.add(load_arg);
+   
+    cmd.parse(argc, argv);
+    
+    if (!calibrate_arg.isSet() && !save_arg.isSet() && !load_arg.isSet())
+    {
+        std::cout << std::endl << "nothing to do, run again with -h for help" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    rs2::device dev = init();
+
+    if (calibrate_arg.isSet())
+    {
+        bool valid_config = on_chip_calibrate(dev);
+    }
+    else if(save_arg.isSet())
+    {
+        std::string save_file;
+        save_file = save_arg.getValue();
+        save_calib_data(dev, save_file.c_str());
+    }
+    else if(load_arg.isSet())
+    {
+        std::string load_file;
+        load_file = load_arg.getValue();
+        load_calib_data(dev, load_file.c_str());
+    }
+
+    
+    
+    
  
     return EXIT_SUCCESS;
 }
